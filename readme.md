@@ -1,6 +1,5 @@
 # Industrial signal foundation model
-
-
+```
 ProjectRoot
 ├── README.md                       # 项目说明及使用指南
 ├── .gitignore                      # 忽略文件/文件夹配置
@@ -45,3 +44,4 @@ ProjectRoot
 │   └── plot                        # 可视化结果或图表
 │
 └── requirements.txt (或 pyproject.toml / setup.py)   # 依赖包或环境管理
+'''
