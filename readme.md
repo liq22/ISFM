@@ -2,51 +2,46 @@
 
 
 ProjectRoot
-├── README.md                # 项目总览与使用说明
-├── main.py                  # 项目主入口脚本
-├── configs                  # 存放各种配置文件（超参数、数据路径、模型结构等）
+├── README.md                       # 项目说明及使用指南
+├── .gitignore                      # 忽略文件/文件夹配置
+│
+├── configs                         # 所有项目配置，按需细分
+│   ├── basic.yaml                  # 示例基本配置文件
+│   └── ...                         # (可拓展更多config，如dev.yaml, prod.yaml等)
+│
+├── scripts                         # 存放脚本（数据预处理、模型可视化、测试驱动等）
+│   ├── preprocess_data.py          # 预处理脚本
+│   ├── postprocess_data.py         # 后处理脚本
+│   ├── train.py                    # 主要训练脚本/启动入口
+│   ├── evaluate.py                 # 评估/推理脚本
+│   └── ...                         # (可拓展更多脚本)
+│
+├── src                             # 核心源码
 │   ├── __init__.py
-│   └── default.yaml
-├── data                     # 原始数据或数据链接/引用
-│   ├── raw                  # 原始数据（可使用软链接）
-│   ├── processed            # 预处理后的数据
-│   └── README.md            # 数据集说明
-├── docs                     # 文档说明、设计文档、API文档等（可选）
-│   └── architecture.md
-├── scripts                  # 可执行脚本，如数据下载、预处理、评测、可视化
-│   ├── download_data.py
-│   ├── preprocess.py
-│   ├── postprocess.py
-│   ├── evaluate.py
-│   └── plot.py
-├── src                      # 主要的源码目录
-│   ├── __init__.py
-│   ├── data                 # 与数据处理强相关的脚本/类（DataLoader等）
-│   │   └── __init__.py
-│   ├── models               # 模型与背骨(backbone)、模块化组件(embedding, heads, etc.)
-│   │   ├── __init__.py
-│   │   └── model_collection # 同一模型体系内的多种变体实现
+│   ├── data_process                # 数据加载与处理
+│   │   └── ...
+│   ├── losses                      # 损失函数 & 评估指标
+│   │   ├── eval_metric
+│   │   │   └── ...
+│   │   └── task_loss
 │   │       └── ...
-│   ├── trainer              # 模型训练相关模块(Trainer类、循环逻辑、分布式训练等)
-│   │   └── __init__.py
-│   ├── utils                # 通用工具函数、日志、配置加载等
+│   ├── models                      # 模型相关
+│   │   ├── backbone.py             # Backbone骨干网络
+│   │   ├── embedding.py            # Embedding等输入表示层
+│   │   ├── task_head.py            # 任务头，如分类、回归等
+│   │   └── z_model_collection      # 不同模型变体的集合
+│   │       └── ...
+│   ├── trainer                     # 训练逻辑封装 (PyTorch Lightning 模块/训练器)
 │   │   ├── __init__.py
-│   │   └── logger.py
-│   ├── losses               # 各类损失函数、评估指标实现
-│   │   └── __init__.py
-│   ├── tasks                # 各类特定任务逻辑(例如分类、回归、分割等)
-│   │   └── __init__.py
-│   └── pipelines            # 将数据、模型、训练等串起来的完整流程（可选）
-│       └── __init__.py
-├── tests                    # 单元测试、集成测试等
-│   ├── __init__.py
-│   ├── test_data.py
-│   ├── test_models.py
-│   └── test_trainer.py
-├── logs                     # 日志保存路径(可选)
+│   │   └── lightning_trainer.py    # 自定义LightningModule/LightningDataModule等
+│   └── utils                       # 工具函数，日志、配置解析等
+│       └── ...
+│
+├── test                            # 单元测试 & 集成测试
 │   └── ...
-├── outputs                  # 结果输出（模型权重、中间结果、可视化图表等）
-│   ├── checkpoints          # 训练好或中间保存的模型权重
-│   ├── figures              # 绘图或可视化结果
-│   └── metrics              # 各种评估指标或预测结果
-└── .gitignore               # Git忽略规则文件（可选）
+│
+├── save                            # 训练或测试后的输出保存路径
+│   ├── log                         # 默认日志/检查点保存路径
+│   └── plot                        # 可视化结果或图表
+│
+└── requirements.txt (或 pyproject.toml / setup.py)   # 依赖包或环境管理
