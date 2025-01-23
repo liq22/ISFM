@@ -3,25 +3,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
 
-class RandomPatchMixer(nn.Module):
+class Patchfy(nn.Module):
     """
-    Randomly divides the input tensor along L and C dimensions into patches and mixes them using linear layers.
-    Time embedding is added to the patches after they have been selected, preserving the temporal information
-    without including the time axis in the patch selection process.
+    Extracts patches from the input tensor and applies FFT along the L dimension.
     """
-    def __init__(self, patch_size_L, patch_size_C, num_patches, output_dim, f_s):
-        super(RandomPatchMixer, self).__init__()
-        self.patch_size_L = patch_size_L  # Patch size along L dimension
-        self.patch_size_C = patch_size_C  # Patch size along C dimension
-        self.num_patches = num_patches    # Number of patches to sample
-        self.output_dim = output_dim
-        self.f_s = f_s  # Sampling frequency
-        self.T = 1.0 / f_s  # Sampling period
-
-        # Linear layers for alignment and mixing
-        # Input dimension remains the same as before, time embedding will be added after patch selection
-        self.linear1 = nn.Linear(self.patch_size_L * (self.patch_size_C * 2), output_dim)
-        self.linear2 = nn.Linear(output_dim, output_dim)
+    def __init__(self, patch_size_L, patch_size_C, num_patches, f_s):
+        super(Patchfy, self).__init__()
+        self.patch_size_L = patch_size_L
+        self.patch_size_C = patch_size_C
+        self.num_patches = num_patches
+        self.f_s = f_s
+        self.T = 1.0 / f_s
 
     def forward(self, x):
         B, L, C = x.size()
@@ -71,26 +63,51 @@ class RandomPatchMixer(nn.Module):
         patches = patches.gather(2, idx_L.expand(-1, -1, -1, C))  # (B, num_patches, patch_size_L, C)
         patches = patches.gather(3, idx_C.expand(-1, -1, self.patch_size_L, -1))  # (B, num_patches, patch_size_L, patch_size_C)
 
-        # After patches are selected, add time embedding
-        t_expanded = t.unsqueeze(1).expand(-1, self.num_patches, -1)  # (B, num_patches, L)
-        t_patches = t_expanded.gather(2, idx_L.squeeze(-1))  # Extract corresponding time values, shape: (B, num_patches, patch_size_L)
+        # Apply FFT along the L dimension
+        patches_fft = torch.fft.fft(patches, dim=2)  # (B, num_patches, patch_size_L, patch_size_C)
+        patches_fft = torch.view_as_real(patches_fft)  # (B, num_patches, patch_size_L, patch_size_C, 2)
 
-        # Reshape t_patches to match patches
-        t_patches = t_patches.unsqueeze(-1).expand(-1, -1, -1, self.patch_size_C)  # (B, num_patches, patch_size_L, patch_size_C)
+        return patches_fft, t
 
-        # Concatenate time embedding to the patches along the channel dimension
-        patches = torch.cat([patches, t_patches], dim=-1)  # New patches shape: (B, num_patches, patch_size_L, patch_size_C + 1)
+class Fusion(nn.Module):
+    """
+    Fuses the patches using linear layers.
+    """
+    def __init__(self, patch_size_L, patch_size_C, output_dim):
+        super(Fusion, self).__init__()
+        self.linear1 = nn.Linear(patch_size_L * patch_size_C * 2, output_dim)
+        self.linear2 = nn.Linear(output_dim, output_dim)
+
+    def forward(self, patches_fft, t):
+        B, num_patches, patch_size_L, patch_size_C, _ = patches_fft.size()
 
         # Flatten patches and apply linear layers
-        patches = rearrange(patches, 'b p l c -> (b p) (l c)')  # (B * num_patches, patch_size_L * (patch_size_C + 1))
+        patches = rearrange(patches_fft, 'b p l c r -> (b p) (l c r)')  # (B * num_patches, patch_size_L * patch_size_C * 2)
         out = self.linear1(patches)
         out = F.silu(out)
         out = self.linear2(out)
 
         # Reshape back to (B, num_patches, output_dim)
-        out = rearrange(out, '(b p) o -> b p o', b=B, p=self.num_patches)
+        out = rearrange(out, '(b p) o -> b p o', b=B, p=num_patches)
 
         return out
+
+class RandomPatchMixer(nn.Module):
+    """
+    Randomly divides the input tensor along L and C dimensions into patches and mixes them using linear layers.
+    Time embedding is added to the patches after they have been selected, preserving the temporal information
+    without including the time axis in the patch selection process.
+    """
+    def __init__(self, patch_size_L, patch_size_C, num_patches, output_dim, f_s):
+        super(RandomPatchMixer, self).__init__()
+        self.patchfy = Patchfy(patch_size_L, patch_size_C, num_patches, f_s)
+        self.fusion = Fusion(patch_size_L, patch_size_C, output_dim)
+
+    def forward(self, x):
+        patches_fft, t = self.patchfy(x)
+        out = self.fusion(patches_fft, t)
+        return out
+
 if __name__ == '__main__':
     # Testing the RandomPatchMixer class
     def test_random_patch_mixer():
