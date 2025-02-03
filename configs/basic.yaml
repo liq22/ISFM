@@ -1,0 +1,42 @@
+model:
+  name: 'M_01_ISFM'
+  n_patches: 64
+  n_classes: 4
+  f_s: 100
+
+  embedding: E_01_HTFE
+  patch_size_L: 128
+  patch_size_C: 8
+  output_dim: 64
+
+  backbone: B_01_basic_transformer
+  input_dim: 64
+  nhead: 2
+  num_layers: 2
+
+  task_head: H_01_Linear_cla
+  dropout: 0
+
+
+trainer:
+  lr: 0.001
+  batch_size: 64
+  max_epochs: 100
+
+  device: cuda
+  gpus: 1 
+  precision: 16
+  num_workers: 4
+  
+  seed: 42
+  monitor: 'val_loss'
+  patience: 100
+# loss
+  weight_decay: 0.0001 
+  l1_lambda: 0.001
+  snr: False
+  
+dataset:
+  data_dir: '/home/user/data/a_bearing/a_006_THU_pro/LQ_fusion/'
+  task: 006_THU_basic # THU_006_basic THU_006_generalization THU_006_fusion THU_018_basic THU_018_generalization THU_018_fusion
+  target: '10hz' # if basic or generalization 1hz 10hz 15hz
