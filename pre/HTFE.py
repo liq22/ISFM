@@ -3,17 +3,45 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
 
-class Patchfy(nn.Module):
+class HTFE(nn.Module):
     """
-    Extracts patches from the input tensor and applies FFT along the L dimension.
+    Randomly divides the input tensor along L and C dimensions into patches and mixes them using linear layers.
+    Time embedding is added to the patches after they have been selected, preserving the temporal information
+    without including the time axis in the patch selection process.
     """
-    def __init__(self, patch_size_L, patch_size_C, num_patches, f_s):
-        super(Patchfy, self).__init__()
-        self.patch_size_L = patch_size_L
-        self.patch_size_C = patch_size_C
-        self.num_patches = num_patches
-        self.f_s = f_s
-        self.T = 1.0 / f_s
+    def __init__(self, patch_size_L=128, patch_size_C=8, num_patches=64, 
+                 output_dim=64, f_s=100, dropout=0.1):
+        super(HTFE, self).__init__()
+        self.patch_size_L = patch_size_L  # Patch size along L dimension
+        self.patch_size_C = patch_size_C  # Patch size along C dimension
+        self.num_patches = num_patches    # Number of patches to sample
+        self.output_dim = output_dim
+        self.f_s = f_s  # Sampling frequency
+        self.T = 1.0 / f_s  # Sampling period
+        
+
+        # Linear layers for alignment and mixing
+        # Input dimension remains the same as before, time embedding will be added after patch selection
+        
+        # [B, num_patches, patch_size_L, patch_size_C * 3] -> [B, num_patches, patch_size_L, output_dim]
+        self.proj_in = nn.Sequential(
+            # nn.LayerNorm(patch_size_C + 3),  # +3 for t, c, f
+            nn.Linear(patch_size_C * 2 + 1, output_dim),  # 
+            nn.SiLU(),
+        )
+        # [B, num_patches, patch_size_L, output_dim + 1] -> [B, num_patches, patch_size_L, output_dim]
+        self.fft_proj = nn.Sequential(
+            nn.Linear(output_dim * 2 + 1, output_dim),
+            nn.SiLU(),
+        )
+        self.mixer = nn.Sequential(
+            nn.Linear(output_dim * self.patch_size_L, output_dim),
+            nn.SiLU(),
+        )
+        
+        # self.fft_linear = nn.Linear(output_dim + 1, output_dim)
+        # # [B, num_patches, patch_size_L, output_dim] -> [B, num_patches, output_dim]
+        # self.linear2 = nn.Linear(output_dim * self.patch_size_L, output_dim)
 
     def forward(self, x):
         B, L, C = x.size()
@@ -22,7 +50,9 @@ class Patchfy(nn.Module):
         # Generate time axis t, starting from 0
         t = torch.arange(L, device=device).float() * self.T  # Shape: (L,)
         t = t.unsqueeze(0).expand(B, -1)  # Shape: (B, L)
-
+        f = torch.linspace(0, self.f_s / 2, self.patch_size_L // 2 + 1, device=device)  # Frequency axis Shape: (L // 2 + 1,)
+        c = torch.arange(C, device=device)  # Channel axis Shape: (C,)
+        
         # Adjust x to fit the patch sizes if necessary by repeating elements
         if self.patch_size_L > L:
             repeats_L = (self.patch_size_L + L - 1) // L  # Ceiling division
@@ -33,81 +63,62 @@ class Patchfy(nn.Module):
         if self.patch_size_C > C:
             repeats_C = (self.patch_size_C + C - 1) // C  # Ceiling division
             x = repeat(x, 'b l c -> b l (c r)', r=repeats_C)
+            c = repeat(c, 'c -> (c r)', r=repeats_C)
             C = x.size(2)  # Update C
 
         # Randomly select starting positions for patches along L and C dimensions
         max_start_L = L - self.patch_size_L
-        max_start_C = C - self.patch_size_C
-
         start_indices_L = torch.randint(0, max_start_L + 1, (B, self.num_patches), device=device)  # (B, num_patches)
-        start_indices_C = torch.randint(0, max_start_C + 1, (B, self.num_patches), device=device)  # (B, num_patches)
-
         # Create offsets for patch sizes
         offsets_L = torch.arange(self.patch_size_L, device=device)  # (patch_size_L,)
-        offsets_C = torch.arange(self.patch_size_C, device=device)  # (patch_size_C,)
+
 
         # Compute indices for patches
         idx_L = start_indices_L.unsqueeze(-1) + offsets_L  # (B, num_patches, patch_size_L)
-        idx_C = start_indices_C.unsqueeze(-1) + offsets_C  # (B, num_patches, patch_size_C)
+        # Randomly select indices for patches along C dimension
+        idx_C = torch.randint(0, C, (B, self.num_patches, self.patch_size_C), device=device)  # (B, num_patches, patch_size_C)
 
         # Use modulo operation to handle cases where indices exceed dimensions
         idx_L = idx_L % L  # (B, num_patches, patch_size_L)
-        idx_C = idx_C % C  # (B, num_patches, patch_size_C)
 
         # Expand batch dimension for indexing
-        idx_L = idx_L.unsqueeze(-1)  # (B, num_patches, patch_size_L, 1)
-        idx_C = idx_C.unsqueeze(-2)  # (B, num_patches, 1, patch_size_C)
+        idx_L = rearrange(idx_L, 'b p l -> b p l 1')  # (B, num_patches, patch_size_L, 1)
+        idx_C = rearrange(idx_C, 'b p c -> b p 1 c')  # (B, num_patches, 1, patch_size_C)
 
         # Extract patches using advanced indexing
-        patches = x.unsqueeze(1).expand(-1, self.num_patches, -1, -1)  # (B, num_patches, L, C)
+        patches = rearrange(x,'b l c -> b 1 l c').expand(-1, self.num_patches, -1, -1)  # (B, num_patches, L, C)
         patches = patches.gather(2, idx_L.expand(-1, -1, -1, C))  # (B, num_patches, patch_size_L, C)
         patches = patches.gather(3, idx_C.expand(-1, -1, self.patch_size_L, -1))  # (B, num_patches, patch_size_L, patch_size_C)
 
-        # Apply FFT along the L dimension
-        patches_fft = torch.fft.fft(patches, dim=2)  # (B, num_patches, patch_size_L, patch_size_C)
-        patches_fft = torch.view_as_real(patches_fft)  # (B, num_patches, patch_size_L, patch_size_C, 2)
+        # After patches are selected, add time embedding
+        t_expanded = rearrange(t,'b l -> b 1 l').expand(-1, self.num_patches, -1)  # (B, num_patches, L)
+        t_patches = t_expanded.gather(2, idx_L.squeeze(-1))  # Extract corresponding time values, shape: (B, num_patches, patch_size_L)
 
-        return patches_fft, t
+        # 
+        c_expanded = rearrange(c,'c -> 1 1 c').expand(B, self.num_patches, -1)  # (B, num_patches, C)
+        c_patches = c_expanded.gather(2, idx_C.squeeze(-2))  # Extract corresponding channel values, shape: (B, num_patches, patch_size_C)
+        
+        # Reshape t_patches to match patches
+        t_patches = rearrange(t_patches,'b n l -> b n l 1')  # (B, num_patches, patch_size_L, patch_size_C)
+        c_patches = rearrange(c_patches,'b n c -> b n 1 c').expand(-1, -1, self.patch_size_L, -1)  # (B, num_patches, patch_size_L, patch_size_C)
+        f_patches = rearrange(f,'f -> 1 1 f 1').expand(B, self.num_patches, -1, 1)  # (B, num_patches, patch_size_L, patch_size_C)
+        # Concatenate time embedding to the patches along the channel dimension
+        patches = torch.cat([patches, t_patches, c_patches], dim=-1)  # New patches shape: (B, num_patches, patch_size_L, patch_size_C + 1)
+        patches =self.proj_in(patches)  # (B, num_patches, patch_size_L, output_dim)
 
-class Fusion(nn.Module):
-    """
-    Fuses the patches using linear layers.
-    """
-    def __init__(self, patch_size_L, patch_size_C, output_dim):
-        super(Fusion, self).__init__()
-        self.linear1 = nn.Linear(patch_size_L * patch_size_C * 2, output_dim)
-        self.linear2 = nn.Linear(output_dim, output_dim)
-
-    def forward(self, patches_fft, t):
-        B, num_patches, patch_size_L, patch_size_C, _ = patches_fft.size()
-
+        # Compute FFT along the patch dimension
+        fft = torch.fft.rfft(patches, dim = -2, norm = 'ortho')  # (B, num_patches, patch_size_L, patch_size_C + 1)
+        fft = torch.cat([fft.real, fft.imag,f_patches], dim=-1)  # (B, num_patches, patch_size_L, 2 * (patch_size_C + 1))
+        fft = self.fft_proj(fft)  # (B, num_patches, patch_size_L, output_dim)
         # Flatten patches and apply linear layers
-        patches = rearrange(patches_fft, 'b p l c r -> (b p) (l c r)')  # (B * num_patches, patch_size_L * patch_size_C * 2)
-        out = self.linear1(patches)
-        out = F.silu(out)
-        out = self.linear2(out)
+        patches = rearrange(patches, 'b p l c -> b p (l c)')  # (B * num_patches, patch_size_L * (patch_size_C + 1))
+        out = self.mixer(patches)
 
         # Reshape back to (B, num_patches, output_dim)
-        out = rearrange(out, '(b p) o -> b p o', b=B, p=num_patches)
+        # out = rearrange(out, '(b p) o -> b p o', b=B, p=self.num_patches)
 
         return out
-
-class RandomPatchMixer(nn.Module):
-    """
-    Randomly divides the input tensor along L and C dimensions into patches and mixes them using linear layers.
-    Time embedding is added to the patches after they have been selected, preserving the temporal information
-    without including the time axis in the patch selection process.
-    """
-    def __init__(self, patch_size_L, patch_size_C, num_patches, output_dim, f_s):
-        super(RandomPatchMixer, self).__init__()
-        self.patchfy = Patchfy(patch_size_L, patch_size_C, num_patches, f_s)
-        self.fusion = Fusion(patch_size_L, patch_size_C, output_dim)
-
-    def forward(self, x):
-        patches_fft, t = self.patchfy(x)
-        out = self.fusion(patches_fft, t)
-        return out
-
+    
 if __name__ == '__main__':
     # Testing the RandomPatchMixer class
     def test_random_patch_mixer():
@@ -121,7 +132,7 @@ if __name__ == '__main__':
         output_dim = 16    # Output dimension after mixing
         f_s = 100  # Sampling frequency
 
-        model = RandomPatchMixer(patch_size_L, patch_size_C, num_patches, output_dim, f_s)
+        model = HTFE(patch_size_L, patch_size_C, num_patches, output_dim, f_s)
 
         for C in C_list:
             for L in L_list:
