@@ -13,7 +13,7 @@ def makedir(path):
         os.makedirs(path)
         
 def path_name(args,it = 0):
-    time_stamp = time.strftime("%dD%HH%MM%SS", time.localtime())
+    time_stamp = time.strftime("%dD%HH%MM", time.localtime()) #args_t
     embed_name = args['model']['embedding']
     back_name = args['model']['backbone']
     head_name = args['model']['task_head']
@@ -23,7 +23,7 @@ def path_name(args,it = 0):
     model = args['model']['name']
     path = 'save/log/' + f'task_{task}/'+f'model_{model}/' + name
     makedir(path)
-    return path
+    return path,name
 
 def transfer_namespace(args):
     return SimpleNamespace(**args)

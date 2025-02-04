@@ -1,6 +1,6 @@
-from embedding import *
-from backbone import *
-from task_head import *
+from .embedding import *
+from .backbone import *
+from .task_head import *
 import torch.nn as nn
 
 Embedding_dict = {

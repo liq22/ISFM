@@ -45,3 +45,6 @@ ProjectRoot
 │
 └── requirements.txt (或 pyproject.toml / setup.py)   # 依赖包或环境管理
 '''
+
+# Multi-mode signal foundation model
+'''

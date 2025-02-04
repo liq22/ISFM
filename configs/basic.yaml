@@ -19,24 +19,37 @@ model:
 
 
 trainer:
-  lr: 0.001
-  batch_size: 64
-  max_epochs: 100
+
+  n_epochs: 100
+  loss_type: 'CE'
+
 
   device: cuda
   gpus: 1 
   precision: 16
-  num_workers: 4
   
   seed: 42
   monitor: 'val_loss'
-  patience: 100
-# loss
+  patience: 64
+  # loss
+  lr: 0.001
   weight_decay: 0.0001 
-  l1_lambda: 0.001
   snr: False
+  wandb: False
+  notes: 'basic'
+  metrics: ['acc', 'f1']
+  # prune
+  pruning: False
+  regularization:
+    flag: False
+    method: 
+      l1: 0.00001
+
+
   
 dataset:
   data_dir: '/home/user/data/a_bearing/a_006_THU_pro/LQ_fusion/'
-  task: 006_THU_basic # THU_006_basic THU_006_generalization THU_006_fusion THU_018_basic THU_018_generalization THU_018_fusion
+  task: a_006_THU # THU_006_basic THU_006_generalization THU_006_fusion THU_018_basic THU_018_generalization THU_018_fusion
   target: '10hz' # if basic or generalization 1hz 10hz 15hz
+  batch_size: 64
+  num_workers: 4
