@@ -1,0 +1,73 @@
+model:
+  name: 'M_01_ISFM'
+  n_patches: 128
+
+
+  embedding:  E_01_HSE # E_01_HTFE
+  patch_size_L: 256
+  patch_size_C: 1
+  output_dim: 1024
+
+  backbone: B_01_basic_transformer
+  # input_dim: 1024
+  nhead: 1
+  num_layers: 1
+
+  task_head: H_01_Linear_cla
+  dropout: 0
+
+
+trainer:
+  n_epochs: 100
+
+  cla_loss: 'CE'
+  imputation_loss: 'MSE'
+  forecast_loss: 'MSE'
+  anomaly_loss: 'MSE'
+
+  device: cuda
+  gpus: 1 
+  precision: 16
+  
+  seed: 42
+  monitor: 'val_loss'
+  patience: 64
+  # loss
+  lr: 0.0001
+  weight_decay: 0.0001 
+  snr: False
+  wandb: False
+  notes: 'basic'
+  metrics: ['acc', 'f1']
+  # prune
+  pruning: False
+  regularization:
+    flag: False
+    method: 
+      l1: 0.00001
+  pretrained_weight: False
+
+dataset:
+  batch_size: 64
+  num_workers: 4
+  task:
+    a_006_THU:
+      data_dir: '/home/user/data/a_bearing/a_006_THU_pro/LQ_fusion/'
+      source: ['10hz','15hz'] # if basic or generalization 1hz 10hz 15hz 
+      target: '10hz' # if basic or generalization 1hz 10hz 15hz
+      task_list: ['classification'] # imputation
+      n_classes: 4
+      f_s: 25600
+      length: 4096
+
+    a_001_CWRU:
+      data_dir: '/home/user/data/a_bearing/a_001_CWRU_pro/LQ_fusion/'
+      source: ['10hz','15hz'] # if basic or generalization 1hz 10hz 15hz 
+      target: '10hz' # if
+    a_013_SUDA:
+      data_dir: '/home/user/data/a_bearing/a_013_SUDA_pro/LQ_fusion/'
+      source: ['10hz','15hz'] # if basic or generalization 1hz 10hz 15hz 
+      target: '10hz' # if
+
+    
+

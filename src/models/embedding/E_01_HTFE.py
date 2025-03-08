@@ -27,7 +27,7 @@ class E_01_HTFE(nn.Module):
         # [B, num_patches, patch_size_L, patch_size_C * 3] -> [B, num_patches, patch_size_L, output_dim]
         self.proj_in = nn.Sequential(
             # nn.LayerNorm(patch_size_C + 3),  # +3 for t, c, f
-            nn.Linear(self.patch_size_C * 2 + 1,self. output_dim),  # 
+            nn.Linear(self.patch_size_C * 2 + 1,self.output_dim),  # 
             nn.SiLU(),
         )
         # [B, num_patches, patch_size_L, output_dim + 1] -> [B, num_patches, patch_size_L, output_dim]

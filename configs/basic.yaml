@@ -1,18 +1,18 @@
 model:
   name: 'M_01_ISFM'
-  n_patches: 64
+  n_patches: 128
   n_classes: 4
-  f_s: 100
+  f_s: 25600
 
-  embedding: E_01_HTFE
-  patch_size_L: 128
-  patch_size_C: 8
-  output_dim: 64
+  embedding:  E_01_HSE # E_01_HTFE
+  patch_size_L: 256
+  patch_size_C: 1
+  output_dim: 1024
 
   backbone: B_01_basic_transformer
-  input_dim: 64
-  nhead: 2
-  num_layers: 2
+  # input_dim: 1024
+  nhead: 1
+  num_layers: 1
 
   task_head: H_01_Linear_cla
   dropout: 0
@@ -21,7 +21,7 @@ model:
 trainer:
 
   n_epochs: 100
-  loss_type: 'CE'
+  cla_loss: 'CE'
 
 
   device: cuda
@@ -32,7 +32,7 @@ trainer:
   monitor: 'val_loss'
   patience: 64
   # loss
-  lr: 0.001
+  lr: 0.0001
   weight_decay: 0.0001 
   snr: False
   wandb: False
@@ -45,8 +45,6 @@ trainer:
     method: 
       l1: 0.00001
 
-
-  
 dataset:
   data_dir: '/home/user/data/a_bearing/a_006_THU_pro/LQ_fusion/'
   task: a_006_THU # THU_006_basic THU_006_generalization THU_006_fusion THU_018_basic THU_018_generalization THU_018_fusion

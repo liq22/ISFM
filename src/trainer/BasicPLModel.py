@@ -65,10 +65,10 @@ class BasicPLModel(pl.LightningModule):
             "MSE": nn.MSELoss(),
             "BCE": nn.BCEWithLogitsLoss()
         }
-        if self.args_t.loss_type not in loss_mapping:
-            raise ValueError(f"不支持的损失函数类型: {self.args_t.loss_type}"
+        if self.args_t.cla_loss not in loss_mapping:
+            raise ValueError(f"不支持的损失函数类型: {self.args_t.cla_loss}"
                              f"，可选类型: {list(loss_mapping.keys())}")
-        return loss_mapping[self.args_t.loss_type]
+        return loss_mapping[self.args_t.cla_loss]
     
     def _configure_metrics(self) -> Dict[str, torchmetrics.Metric]:
         """配置评估指标集合"""
@@ -241,7 +241,7 @@ if __name__ == '__main__':
         patience: int = 10
         snr: Optional[int] = None
         l1_norm: float = 0.0
-        loss_type: str = "cross_entropy"
+        cla_loss: str = "cross_entropy"
         metrics: List[str] = ("accuracy",)
         regularization: Optional[Dict[str, Any]] = None
     @dataclass
@@ -263,7 +263,7 @@ if __name__ == '__main__':
 
     # 配置参数
     train_args = TrainingConfig(
-        loss_type="cross_entropy",
+        cla_loss="cross_entropy",
         metrics=["accuracy", "f1"],
         regularization={"type": "l1", "weight": 0.01},
         snr=20,
