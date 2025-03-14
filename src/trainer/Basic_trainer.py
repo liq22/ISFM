@@ -22,14 +22,13 @@ def trainer_set(args_t,args_d, path):
 
     # 获取回调列表
     callback_list = call_backs(args_t, path)
-
+    log_list = [CSVLogger(path, name="logs")]
     # 根据 wandb_flag 确定日志记录器列表
     if args_t.wandb:
         # 配置 WandB 日志记录
         wandb_logger = WandbLogger(project=args_d.task)
-        log_list = [CSVLogger(path, name="logs"), wandb_logger]  
-    else:
-        log_list = [CSVLogger(path, name="logs")]
+        log_list.append(wandb_logger)
+        
 
     # 设置设备类型：CPU 或自动选择
     accelerate_type = 'cpu' if args_t.device == 'cpu' else 'auto'
@@ -70,8 +69,9 @@ def call_backs(args, path):
     callback_list = [checkpoint_callback]
 
     # 模型修剪回调（根据需求添加）
-    prune_callback = Prune_callback(args)
-    if prune_callback is not None:
+    
+    if args.pruning:
+        prune_callback = Prune_callback(args)
         callback_list.append(prune_callback)
     # 早期停止回调
     early_stopping = create_early_stopping_callback(args)

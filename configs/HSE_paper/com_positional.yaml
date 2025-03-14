@@ -3,10 +3,14 @@ model:
   n_patches: 128
   
 
-
-  embedding:  E_01_HSE # E_01_HTFE
+  # ok
+  embedding: E_com_00_PE
+  embed_type: 'positional'  # 嵌入类型
   patch_size_L: 256
   patch_size_C: 1
+
+  stride: 16              # 步长
+  padding: 2              # 填充
   output_dim: 1024
 
   backbone: B_01_basic_transformer
@@ -15,12 +19,12 @@ model:
   num_layers: 1
 
   task_head: H_01_Linear_cla
-  dropout: 0.5
+  dropout: 0
 
 
 trainer:
 
-  n_epochs: 100
+  n_epochs: 20
   cla_loss: 'CE'
 
 

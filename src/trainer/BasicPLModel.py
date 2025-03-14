@@ -85,8 +85,8 @@ class BasicPLModel(pl.LightningModule):
                 
             metrics.update({
                 f"{stage}_{metric_name}": metric_classes[metric_name](
-                    task="multiclass" if self.args_m.n_classes > 2 else "binary",
-                    num_classes=self.args_m.n_classes
+                    task="multiclass" if self.args_d.n_classes > 2 else "binary",
+                    num_classes=self.args_d.n_classes
                 )
                 for stage in ["train", "val", "test"]
             })
@@ -156,13 +156,13 @@ class BasicPLModel(pl.LightningModule):
         noise = torch.randn_like(x) * torch.sqrt(noise_power)
         return x + noise
 
-    def _generate_snr(self) -> int:
-        """生成随机SNR值"""
-        return torch.randint(
-            min(self.args_t.snr, 0),
-            max(self.args_t.snr, 0) + 1,
-            (1,)
-        ).item()
+    # def _generate_snr(self) -> int:
+    #     """生成随机SNR值"""
+    #     return torch.randint(
+    #         min(self.args_t.snr, 0),
+    #         max(self.args_t.snr, 0) + 1,
+    #         (1,)
+    #     ).item()
         
         
     def _calculate_regularization(self) -> torch.Tensor:
@@ -206,7 +206,7 @@ class BasicPLModel(pl.LightningModule):
     def configure_optimizers(self) -> Dict:
         """配置优化器和学习率调度"""
         optimizer = torch.optim.Adam(
-            self.parameters(),
+            self.network.parameters(),
             lr=self.args_t.lr,
             weight_decay=self.args_t.weight_decay
         )

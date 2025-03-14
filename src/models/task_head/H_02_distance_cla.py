@@ -99,7 +99,7 @@ class CrossAttention(nn.Module):
         return x
 
 
-class CLSHead(nn.Module):
+class H_02_distance_cla(nn.Module):
     def __init__(self, d_model, head_dropout=0):
         """
         CLSHead模块，主要用于计算分类任务中的分类头。

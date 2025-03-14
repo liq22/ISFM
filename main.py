@@ -19,20 +19,26 @@ MODEL_DICT = {
 }
 
 if __name__ == '__main__':
-    iteration = 1
     # -----------------------
     # 1. 解析命令行参数
     # -----------------------
     parser = argparse.ArgumentParser(description='ISFM Runner')
 
     # 添加参数
-    parser.add_argument('--config_dir', type=str, default='configs/basic.yaml',
+    parser.add_argument('--config_dir', type=str, default='configs/HSE_paper/com.yaml',
                         help='The directory of the configuration file')
+    parser.add_argument('--iteration', type=int, default=1,
+                        help='The number of iterations to run the experiment')
+    parser.add_argument('--notes', type=str, default='')
+    
     meta_args = parser.parse_args()
     # -----------------------
     # 2. 加载配置文件
     # -----------------------
     config_dir = meta_args.config_dir
+    iteration = meta_args.iteration
+    note = meta_args.notes
+    
     configs = load_config(config_dir)
     args_t,args_m,args_d = (
     transfer_namespace(configs['trainer']),
@@ -48,14 +54,14 @@ if __name__ == '__main__':
         seed_everything(args_t.seed + it) # 17 args.seed 
         # 如果需要使用 WandB，就进行初始化；否则跳过
         if args_t.wandb:
-            wandb.init(project=args_t.task, name=name, notes=args_t.notes)
+            wandb.init(project=args_t.task, name=name, notes=note)
         else:
             wandb.init(mode='disabled')  # 避免 wandb 报错，可使用 "disabled" 模式
         # -----------------------
         # 3.1 初始化模型
         # -----------------------
         # 根据配置文件获取模型类并实例化
-        model_plain = MODEL_DICT[args_m.name](args_m)
+        model_plain = MODEL_DICT[args_m.name](args_m,args_d)
         model = BasicPLModel(model_plain, args_t,args_m,args_d)
         print(model.network)
         

@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from .datasets import Default_dataset
+from .datasets import Default_dataset,SignalDataset,get_dataloaders
 from torch.utils.data import DataLoader
 
 DATASET_TASK_CLASS = {
@@ -11,12 +11,19 @@ DATASET_TASK_CLASS = {
     'a_031_HUST': Default_dataset,
     'a_010_SEU': Default_dataset,
     'a_017_ottawa': Default_dataset,
+    'a_000_simulation':SignalDataset,
 }
 
 
 def get_data(args):
     dataset_class = DATASET_TASK_CLASS[args.task]
-    
+    if args.task == 'a_000_simulation':
+        dataset = SignalDataset(num_samples_per_class=300,
+                                sampling_rate=1024,
+                                duration=1,
+                                npy_path='src/data_process/data_1024.npz',
+                                regenerate=False)
+        return get_dataloaders(dataset, batch_size=32)
     dataset = dataset_class(args,flag = 'train')
     train_loader = DataLoader(
         dataset = dataset,
