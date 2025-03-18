@@ -44,10 +44,12 @@ class M_01_ISFM(nn.Module):
                 self.category_tokes[key] = nn.Parameter(torch.randn(args_m.n_classes, args_m.output_dim))
             self.category_token = nn.Parameter(torch.randn(args_m.n_classes, args_m.output_dim))
         
-    def forward(self, x):
-        x = self.embedding(x)
+    def forward(self, x,data_name = False,task_name = False):
+        x = self.embedding(x,data_name)
         x = self.backbone(x)
-        x = self.task_head(x)
+        
+        # TODO multiple task head 判断 data
+        x = self.task_head(x,data_name,task_name)
         return x
     
 if __name__ == '__main__':

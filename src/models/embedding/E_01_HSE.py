@@ -23,15 +23,16 @@ class E_01_HSE(nn.Module):
         self.patch_size_C = args.patch_size_C  # Patch size along C dimension
         self.num_patches = args.n_patches    # Number of patches to sample
         self.output_dim =  args.output_dim
-        self.f_s =  args_d.f_s  # Sampling frequency
-        self.T = 1.0 /  args_d.f_s  # Sampling period
+        self.args_d = args_d   
+        # self.f_s =  args_d.f_s  # Sampling frequency
+        # self.T = 1.0 /  args_d.f_s  # Sampling period
 
 
         # Two linear layers for flatten + mixing
         self.linear1 = nn.Linear(self.patch_size_L * (self.patch_size_C * 2), self.output_dim)
         self.linear2 = nn.Linear(self.output_dim, self.output_dim)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor,data_name) -> torch.Tensor:
         """
         Forward pass of RandomPatchMixer.
 
@@ -44,9 +45,11 @@ class E_01_HSE(nn.Module):
         """
         B, L, C = x.size()
         device = x.device
+        fs = self.args_d.task[data_name]['f_s']
+        T = 1.0 / fs
 
         # Generate time axis 't' for each sample, shape: (B, L)
-        t = torch.arange(L, device=device, dtype=torch.float32) * self.T
+        t = torch.arange(L, device=device, dtype=torch.float32) * T
         t = t.unsqueeze(0).expand(B, -1)
 
         # If input is smaller than required patch size, repeat along L or C as needed

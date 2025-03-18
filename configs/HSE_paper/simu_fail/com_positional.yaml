@@ -3,9 +3,9 @@ model:
   n_patches: 128
   
 
-
+  # ok
   embedding: E_com_00_PE
-  embed_type: 'token'  # 嵌入类型
+  embed_type: 'positional'  # 嵌入类型
   patch_size_L: 256
   patch_size_C: 1
 
@@ -39,7 +39,7 @@ trainer:
   lr: 0.0001
   weight_decay: 0.0001 
   snr: False
-  wandb: False
+  wandb: True
   notes: 'basic'
   metrics: ['acc', 'f1']
   # prune

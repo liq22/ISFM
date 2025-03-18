@@ -1,7 +1,8 @@
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger, CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, ModelPruning, EarlyStopping
-from ..data_process.data_provider import get_data
+from ..data_process.data_provider import get_data,get_multiple_data
+from ..data_process.balanced_data_loader import Balanced_DataLoader_Dict_Iterator
 from torch.utils.tensorboard.writer import SummaryWriter
 
 def trainer_set(args_t,args_d, path):
@@ -43,7 +44,13 @@ def trainer_set(args_t,args_d, path):
         log_every_n_steps=1
     )
     # 获取数据加载器
-    train_dataloader, val_dataloader, test_dataloader = get_data(args_d)
+    if isinstance(args_d.task, list):
+        train_dataloader, val_dataloader, test_dataloader = get_multiple_data(args_d)
+        train_dataloader = Balanced_DataLoader_Dict_Iterator(train_dataloader,'train')
+        val_dataloader = Balanced_DataLoader_Dict_Iterator(val_dataloader,'val')
+        test_dataloader = Balanced_DataLoader_Dict_Iterator(test_dataloader,'test')
+    else:
+        train_dataloader, val_dataloader, test_dataloader = get_data(args_d)
     return trainer, train_dataloader, val_dataloader, test_dataloader
 
 def call_backs(args, path):

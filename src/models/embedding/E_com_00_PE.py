@@ -46,12 +46,12 @@ class E_com_00_PE(nn.Module):
         
         elif self.embed_type == 'spatio_temporal':
             self.module = SpatioTemporalEmbedding(
-                in_steps=args.in_steps,
+                in_steps=args.patch_size_L,
                 steps_per_day=args.steps_per_day,
                 input_dim=args.input_dim,
                 input_embedding_dim=args.input_embedding_dim,
-                tod_embedding_dim=args.tod_embedding_dim,
-                dow_embedding_dim=args.dow_embedding_dim,
+                # tod_embedding_dim=args.tod_embedding_dim,
+                # dow_embedding_dim=args.dow_embedding_dim,
                 spatial_embedding_dim=args.spatial_embedding_dim,
                 adaptive_embedding_dim=args.adaptive_embedding_dim
             )
@@ -91,6 +91,8 @@ class E_com_00_PE(nn.Module):
         elif self.embed_type == 'positional':
             output = self.module(x).expand(B, -1, -1)
             
+        elif self.embed_type == 'spatio_temporal':
+            output = self.module(x)
         else:
             raise RuntimeError(f"Unhandled embedding type: {self.embed_type}")
 
@@ -223,8 +225,8 @@ class SpatioTemporalEmbedding(nn.Module):
                  steps_per_day=288,
                  input_dim=1,
                  input_embedding_dim=24,
-                 tod_embedding_dim=24,
-                 dow_embedding_dim=24,
+                #  tod_embedding_dim=24,
+                #  dow_embedding_dim=24,
                  spatial_embedding_dim=0,
                  adaptive_embedding_dim=80):
         super().__init__()
@@ -236,8 +238,8 @@ class SpatioTemporalEmbedding(nn.Module):
         self.input_proj = nn.Linear(input_dim, input_embedding_dim)
         
         # 时间嵌入
-        self.tod_embedding = nn.Embedding(steps_per_day, tod_embedding_dim) if tod_embedding_dim > 0 else None
-        self.dow_embedding = nn.Embedding(7, dow_embedding_dim) if dow_embedding_dim > 0 else None
+        # self.tod_embedding = nn.Embedding(steps_per_day, tod_embedding_dim) if tod_embedding_dim > 0 else None
+        # self.dow_embedding = nn.Embedding(7, dow_embedding_dim) if dow_embedding_dim > 0 else None
         
         # 空间嵌入（单节点）
         if spatial_embedding_dim > 0:
@@ -256,8 +258,8 @@ class SpatioTemporalEmbedding(nn.Module):
         # 计算总维度
         self.total_embed_dim = sum([
             input_embedding_dim,
-            tod_embedding_dim,
-            dow_embedding_dim,
+            # tod_embedding_dim,
+            # dow_embedding_dim,
             spatial_embedding_dim,
             adaptive_embedding_dim
         ])
@@ -270,25 +272,25 @@ class SpatioTemporalEmbedding(nn.Module):
         """
         batch_size, seq_len = x.shape[:2]
         
-        # 分割输入特征
-        input_feature = x[..., :self.input_proj.in_features]  # (B, L, input_dim)
-        if self.tod_embedding is not None:
-            tod = x[..., self.input_proj.in_features]         # (B, L)
-        if self.dow_embedding is not None:
-            dow = x[..., self.input_proj.in_features + 1]     # (B, L)
+        # # 分割输入特征
+        # input_feature = x[..., :self.input_proj.in_features]  # (B, L, input_dim)
+        # if self.tod_embedding is not None:
+        #     tod = x[..., self.input_proj.in_features]         # (B, L)
+        # if self.dow_embedding is not None:
+        #     dow = x[..., self.input_proj.in_features + 1]     # (B, L)
 
         # 输入特征投影
-        x = self.input_proj(input_feature)
+        x = self.input_proj(x)
         features = [x]
         
-        # 添加时间嵌入
-        if self.tod_embedding is not None:
-            tod_idx = (tod * self.steps_per_day).long() % self.steps_per_day
-            features.append(self.tod_embedding(tod_idx))
+        # # 添加时间嵌入
+        # if self.tod_embedding is not None:
+        #     tod_idx = (tod * self.steps_per_day).long() % self.steps_per_day
+        #     features.append(self.tod_embedding(tod_idx))
             
-        if self.dow_embedding is not None:
-            dow_idx = dow.long() % 7
-            features.append(self.dow_embedding(dow_idx))
+        # if self.dow_embedding is not None:
+        #     dow_idx = dow.long() % 7
+        #     features.append(self.dow_embedding(dow_idx))
             
         # 添加空间嵌入
         if self.node_emb is not None:
@@ -306,37 +308,77 @@ class SpatioTemporalEmbedding(nn.Module):
 
 # 测试用例
 if __name__ == '__main__':
-    # 参数设置
-    B, L, C = 32, 100, 7
-    d_model = 512
-    
-    # 测试所有嵌入类型
-    embedding_types = [
-        ('positional', {}),
-        ('token', {}),
-        # ('temporal', {'freq': 'h'}),
-        ('time_feature', {'freq': 'h'}),
-        ('data', {'freq': 'h'}),
-        ('data_inverted', {}),
-        ('data_wo_pos', {}),
-        ('patch', {'patch_len': 24, 'stride': 12, 'padding': 4})
+
+    # 定义通用参数
+    class Args:
+        def __init__(self):
+            self.output_dim = 64      # d_model
+            self.dropout = 0.1
+            self.freq = 'h'
+            self.sub_embed_type = 'fixed'
+            self.patch_size_C = 8     # c_in
+            self.patch_size_L = 128    # patch_len
+            self.stride = 8
+            self.padding = 1
+            self.in_steps = 128        # 时空嵌入需要
+            self.steps_per_day = 288
+            self.input_dim = 1        # 时空嵌入输入维度
+            self.patch_len = 128
+
+    # 支持的embedding类型列表
+    embed_types = [
+        # 'positional',
+        # 'token',
+        # 'time_feature',
+        # 'data',
+        # 'data_inverted',
+        # 'data_wo_pos',
+        # 'patch',
+        'spatio_temporal'
     ]
 
-    for embed_type, params in embedding_types:
-        print(f"\nTesting {embed_type} embedding...")
-        model = E_com_00_PE(
-            embed_type=embed_type,
-            c_in=C,
-            d_model=d_model,
-            **params
-        )
+    # 测试配置
+    batch_size = 32
+    seq_len = 128
+
+    for embed_type in embed_types:
+        print(f"\n=== Testing {embed_type} embedding ===")
         
-        x = torch.randn(B, L, C)
-        x_mark = torch.randn(B, L, 4) if embed_type in ['temporal', 'time_feature', 'data'] else None
+        # 初始化参数
+        args = Args()
+        args.embed_type = embed_type
         
-        output = model(x, x_mark)
-        print(f"Input shape:  {x.shape}")
-        print(f"Output shape: {output.shape}")
-        assert output.shape[0] == B
-        assert output.shape[2] == d_model
-        print("Test passed!")
+        # 特殊参数设置
+        if embed_type == 'spatio_temporal':
+            args.input_embedding_dim = 32
+            args.tod_embedding_dim = 0
+            args.dow_embedding_dim = 0
+            args.spatial_embedding_dim = 0
+            args.adaptive_embedding_dim = 32
+        
+        # 初始化模块
+        model = E_com_00_PE(args)
+        
+        # 生成测试数据
+        x = torch.randn(batch_size, seq_len, 1)
+        x_mark = None
+        
+        # 特殊输入处理
+        if embed_type == 'time_feature':
+            x_mark = torch.randn(batch_size, seq_len, 4)  # freq='h'对应4维
+            
+        elif embed_type == 'spatio_temporal':
+            x = torch.randn(batch_size, seq_len, 1)  # (input_dim + tod + dow)
+            
+        elif embed_type in ['data', 'data_inverted', 'data_wo_pos']:
+            x_mark = torch.randn(batch_size, seq_len, 4) if embed_type != 'data_inverted' else None
+        
+        # 执行前向传播
+        try:
+            output = model(x, x_mark)
+            print(f"Input shape: {x.shape}")
+            if x_mark is not None: 
+                print(f"Mark shape: {x_mark.shape}")
+            print(f"Output shape: {output.shape}")
+        except Exception as e:
+            print(f"Error: {str(e)}")

@@ -25,7 +25,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='ISFM Runner')
 
     # 添加参数
-    parser.add_argument('--config_dir', type=str, default='configs/HSE_paper/com.yaml',
+    parser.add_argument('--config_dir',
+                        type=str,
+                        default='configs/basic_FM.yaml',
                         help='The directory of the configuration file')
     parser.add_argument('--iteration', type=int, default=1,
                         help='The number of iterations to run the experiment')
@@ -54,7 +56,7 @@ if __name__ == '__main__':
         seed_everything(args_t.seed + it) # 17 args.seed 
         # 如果需要使用 WandB，就进行初始化；否则跳过
         if args_t.wandb:
-            wandb.init(project=args_t.task, name=name, notes=note)
+            wandb.init(project=args_d.task, name=name, notes=note)
         else:
             wandb.init(mode='disabled')  # 避免 wandb 报错，可使用 "disabled" 模式
         # -----------------------

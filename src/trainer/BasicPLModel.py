@@ -98,13 +98,13 @@ class BasicPLModel(pl.LightningModule):
     
     def _shared_step(self, batch: tuple, stage: str) -> Dict[str, torch.Tensor]:
         """通用处理步骤"""
-        x, y = batch
+        x, y, data_name = batch # data_name = False,task_name = False
         
         # # 噪声注入
         # if self.args_t.snr is not None:
         #     x = self._add_awgn(x, self._generate_snr())
-            
-        y_hat = self(x)
+        # TODO data_name = False,task_name = False
+        y_hat = self(x,data_name)
         loss = self.loss_fn(y_hat, y.long())
         
         # 计算指标

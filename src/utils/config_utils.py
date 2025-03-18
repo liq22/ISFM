@@ -19,11 +19,26 @@ def path_name(args,it = 0):
     head_name = args['model']['task_head']
     name = f'{embed_name}_{back_name}_{head_name}_{time_stamp}_it_{it}'
     print(f'Running experiment: {name}')
-    task = args['dataset']['task']
+    
+    task = extract_task_name(args)
+            
     model = args['model']['name']
     path = 'save/log/' + f'task_{task}/'+f'model_{model}/' + name
     makedir(path)
     return path,name
+
+def extract_task_name(args):
+    if isinstance(args['dataset']['task'],str):
+        task = args['dataset']['task']
+    elif isinstance(args['dataset']['task'],dict):
+        # 提取所有的key值
+        task_keys = list(args['dataset']['task'].keys())
+        # 如果键数量大于3个，则只使用前三个，后续用数字表示
+        if len(task_keys) > 3:
+            task = '_'.join(task_keys[:3]) + f'_plus{len(task_keys)-3}'
+        else:
+            task = '_'.join(task_keys)
+    return task
 
 def transfer_namespace(args):
     return SimpleNamespace(**args)

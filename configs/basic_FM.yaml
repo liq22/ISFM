@@ -50,10 +50,11 @@ trainer:
 dataset:
   batch_size: 64
   num_workers: 4
+  train_val_ratio: 0.8  
   task:
     a_006_THU:
       data_dir: '/home/user/data/a_bearing/a_006_THU_pro/LQ_fusion/'
-      source: ['10hz','15hz'] # if basic or generalization 1hz 10hz 15hz 
+      source: ['1hz','15hz'] # if basic or generalization 1hz 10hz 15hz 
       target: '10hz' # if basic or generalization 1hz 10hz 15hz
       task_list: ['classification'] # imputation
       n_classes: 4
@@ -61,13 +62,25 @@ dataset:
       length: 4096
 
     a_001_CWRU:
-      data_dir: '/home/user/data/a_bearing/a_001_CWRU_pro/LQ_fusion/'
-      source: ['10hz','15hz'] # if basic or generalization 1hz 10hz 15hz 
-      target: '10hz' # if
+      data_dir: '/home/user/data/a_bearing/a_001_CWRU_pro/'
+      source: ['CWRU_12kHz_1730rpm_3hp_10','CWRU_12kHz_1797rpm_0hp_10',
+      'CWRU_48kHz_1730rpm_3hp_10','CWRU_48kHz_1797rpm_0hp_10'] # if basic or generalization 1hz 10hz 15hz 
+      target: ['CWRU_12kHz_1750rpm_2hp_10','CWRU_12kHz_1772rpm_1hp_10',
+      'CWRU_48kHz_1750rpm_2hp_10','CWRU_48kHz_1772rpm_1hp_10'] # if
+      task_list: ['classification'] # imputation
+      n_classes: 10
+      f_s: 12000
+      length: 4096
+
+
     a_013_SUDA:
-      data_dir: '/home/user/data/a_bearing/a_013_SUDA_pro/LQ_fusion/'
-      source: ['10hz','15hz'] # if basic or generalization 1hz 10hz 15hz 
-      target: '10hz' # if
+      data_dir: '/home/user/data/a_bearing/a_013_SUDA_pro/'
+      source: ['SUDA_bearing_0kN_16','SUDA_bearing_3kN_16'] # if basic or generalization 1hz 10hz 15hz 
+      target: ['SUDA_bearing_1kN_16','SUDA_bearing_2kN_16'] # if
+      task_list: ['classification'] # imputation
+      n_classes: 10
+      f_s: 10000
+
 
     
 
