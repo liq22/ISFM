@@ -115,7 +115,7 @@ class MultipleDataset(Dataset):
         #     signal = self.transform(signal)
         signal = torch.tensor(signal, dtype=torch.float32)
         label = torch.tensor(label, dtype=torch.long)
-        return signal, label,self.data_name
+        return signal, label # ,self.data_name  # fix bug
         # return torch.tensor(signal, dtype=torch.float32), torch.tensor(label, dtype=torch.long)
 
 def split_dataset(dataset, train_ratio=0.7): # , val_ratio=0.1, test_ratio=0.2

@@ -10,7 +10,7 @@ model:
 
   backbone: B_01_basic_transformer
   # input_dim: 1024
-  nhead: 1
+  nhead: 2
   num_layers: 1
 
   task_head: H_01_Linear_cla
@@ -18,7 +18,7 @@ model:
 
 
 trainer:
-  n_epochs: 100
+  n_epochs: 1
 
   cla_loss: 'CE'
   imputation_loss: 'MSE'
@@ -46,11 +46,13 @@ trainer:
     method: 
       l1: 0.00001
   pretrained_weight: False
+  scheduler: 'reduceonplateau'
+  optimizer: 'adam'
 
 dataset:
   batch_size: 64
   num_workers: 4
-  train_val_ratio: 0.8  
+  train_val_rate: 0.8  
   task:
     a_006_THU:
       data_dir: '/home/user/data/a_bearing/a_006_THU_pro/LQ_fusion/'
@@ -78,7 +80,7 @@ dataset:
       source: ['SUDA_bearing_0kN_16','SUDA_bearing_3kN_16'] # if basic or generalization 1hz 10hz 15hz 
       target: ['SUDA_bearing_1kN_16','SUDA_bearing_2kN_16'] # if
       task_list: ['classification'] # imputation
-      n_classes: 10
+      n_classes: 16
       f_s: 10000
 
 

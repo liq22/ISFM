@@ -44,7 +44,7 @@ def trainer_set(args_t,args_d, path):
         log_every_n_steps=1
     )
     # 获取数据加载器
-    if isinstance(args_d.task, list):
+    if isinstance(args_d.task, dict):
         train_dataloader, val_dataloader, test_dataloader = get_multiple_data(args_d)
         train_dataloader = Balanced_DataLoader_Dict_Iterator(train_dataloader,'train')
         val_dataloader = Balanced_DataLoader_Dict_Iterator(val_dataloader,'val')

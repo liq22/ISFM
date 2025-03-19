@@ -22,6 +22,8 @@ DATASET_MULTI_TASK_CLASS = {
     'a_010_SEU': MultipleDataset,
     'a_017_ottawa': MultipleDataset,
     'a_000_simulation':MultipleDataset,
+    'a_001_CWRU': MultipleDataset,
+    'a_013_SUDA': MultipleDataset,
 }
 
 
@@ -58,7 +60,7 @@ def get_data(args):
     return train_loader,val_loader,test_loader
 
 def get_multiple_data(args):
-    dataset_class = DATASET_TASK_CLASS[args.task]
+    # dataset_class = DATASET_TASK_CLASS[args.task]
     
     # 定义加载器字典
     train_loaders_dict = {}
@@ -79,8 +81,8 @@ def get_multiple_data(args):
 
         multiple_dataset_class = DATASET_MULTI_TASK_CLASS[data_name]
         
-        source_dataset = multiple_dataset_class(source_files_data, source_files_labels)
-        target_dataset = multiple_dataset_class(target_files_data, target_files_labels)
+        source_dataset = multiple_dataset_class(source_files_data, source_files_labels,data_name)
+        target_dataset = multiple_dataset_class(target_files_data, target_files_labels,data_name)
         
         train_dataset,val_dataset = split_dataset(source_dataset, args.train_val_rate)
 

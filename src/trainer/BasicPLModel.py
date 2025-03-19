@@ -41,7 +41,7 @@ class BasicPLModel(pl.LightningModule):
         self.args_t = args_t
         self.args_m = args_m
         self.args_d = args_d
-        
+        self.data_name_list = list(self.args_d.task.keys()) if isinstance(self.args_d.task, dict) else [self.args_d.task]
         # self.loss = nn.CrossEntropyLoss()　ｒｅｍｏｖｅ
         # self.metric_val = torchmetrics.Accuracy(task="multiclass", num_classes=args_m.n_classes)
         # self.metric_train = torchmetrics.Accuracy(task="multiclass", num_classes=args_m.n_classes)
@@ -79,49 +79,67 @@ class BasicPLModel(pl.LightningModule):
             "recall": torchmetrics.Recall
         }
         metrics = {}
-        for metric_name in self.args_t.metrics:
-            if metric_name not in metric_classes:
-                continue
+        for data_name,dataset_dict in self.args_d.task.items():
+            n_class = dataset_dict['n_classes']
+        
+            for metric_name in self.args_t.metrics:
+                if metric_name not in metric_classes:
+                    print(f'unrecognized metric {metric_name}')
+                    continue
+                    
+                metrics.update({
+                    f"{stage}_{data_name}_{metric_name}": metric_classes[metric_name](
+                        task="multiclass" if n_class > 2 else "binary",
+                        num_classes=n_class
+                    )
+                    for stage in ["train", "val", "test"]
+                })
                 
-            metrics.update({
-                f"{stage}_{metric_name}": metric_classes[metric_name](
-                    task="multiclass" if self.args_d.n_classes > 2 else "binary",
-                    num_classes=self.args_d.n_classes
-                )
-                for stage in ["train", "val", "test"]
-            })
         return nn.ModuleDict(metrics)
     
             
-    def forward(self, x):
-        return self.network(x)
+    def forward(self, x, data_name = None):
+        return self.network(x,data_name)
     
     def _shared_step(self, batch: tuple, stage: str) -> Dict[str, torch.Tensor]:
         """通用处理步骤"""
-        x, y, data_name = batch # data_name = False,task_name = False
+        (x, y), data_name = batch # data_name = False,task_name = False
         
-        # # 噪声注入
+        # # 噪声注入 
         # if self.args_t.snr is not None:
         #     x = self._add_awgn(x, self._generate_snr())
         # TODO data_name = False,task_name = False
         y_hat = self(x,data_name)
-        loss = self.loss_fn(y_hat, y.long())
+        # 单独任务的度量
+        
+        data_task_metrics = {}
+        
+        # 计算对应任务的损失
+        task_loss = self.loss_fn(y_hat, y.long())
+        data_task_metrics[f"{stage}_{data_name}_loss"] = task_loss
+
+        if data_name in self.metrics:
+            for name, metric in self.metrics[data_name].items():
+                if name.startswith(stage):
+                    data_task_metrics[f"{stage}_{data_name}_{name.split('_')[1]}"] = metric(y_hat, y)        
+                    
+        data_task_metrics[f"{stage}_loss"] = task_loss
         
         # 计算指标
-        metrics = {
-            f"{stage}_loss": loss,
-            **{name: metric(y_hat, y) for name, metric in self.metrics.items() if name.startswith(stage)}
-        }
+        # metrics = {
+        #     f"{stage}_loss": task_loss,
+        #     **{name: metric(y_hat, y) for name, metric in self.metrics.items() if name.startswith(stage)}
+        # }
         
         # 正则化处理
         if self.args_t.regularization['flag']:
             reg_dict = self._calculate_regularization()
-            metrics.update(reg_dict)
-            metrics["total_loss"] = loss + reg_dict['total']
+            data_task_metrics.update(reg_dict)
+            data_task_metrics["total_loss"] = task_loss + reg_dict['total']
         else:
-            metrics["total_loss"] = loss
+            data_task_metrics["total_loss"] = task_loss
             
-        return metrics
+        return data_task_metrics
 
     def training_step(self, batch: tuple, batch_idx: int) -> Dict[str, torch.Tensor]:
         """训练步骤"""
@@ -203,31 +221,44 @@ class BasicPLModel(pl.LightningModule):
         reg_dict = reg_dict.update({"total": reg_loss})
         return reg_dict
 
-    def configure_optimizers(self) -> Dict:
-        """配置优化器和学习率调度"""
-        optimizer = torch.optim.Adam(
-            self.network.parameters(),
-            lr=self.args_t.lr,
-            weight_decay=self.args_t.weight_decay
-        )
+    def configure_optimizers(self):
+        """配置优化器和学习率调度器"""
+        # 创建优化器
+        optimizer_name = self.args_t.optimizer.lower()
+        lr = self.args_t.lr
+        weight_decay = self.args_t.weight_decay
         
-        scheduler = ReduceLROnPlateau(
-            optimizer,
-            mode="min",
-            factor=0.1,
-            patience=self.args_t.patience // 2,
-            verbose=True
-        )
+        if optimizer_name == 'adam':
+            optimizer = torch.optim.Adam(self.parameters(), lr=lr, weight_decay=weight_decay)
+        elif optimizer_name == 'adamw':
+            optimizer = torch.optim.AdamW(self.parameters(), lr=lr, weight_decay=weight_decay)
+        elif optimizer_name == 'sgd':
+            optimizer = torch.optim.SGD(self.parameters(), lr=lr, weight_decay=weight_decay, 
+                                        momentum=0.9)
+        else:
+            raise ValueError(f"不支持的优化器: {optimizer_name}")
         
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "monitor": self.args_t.monitor,
-                # "interval": "epoch",
-                "frequency":  self.args_t.patience // 2
-            }
-        }
+        # 创建调度器（如果需要）
+        if self.args_t.scheduler:
+            scheduler_name = self.args_t.scheduler.lower()
+            if scheduler_name == 'cosine':
+                scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                    optimizer, T_max=self.args_t.max_epochs)
+            elif scheduler_name == 'step':
+                scheduler = torch.optim.lr_scheduler.StepLR(
+                    optimizer, step_size=10, gamma=0.1)
+            elif scheduler_name == 'reduceonplateau':
+                scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                    optimizer, mode='min', factor=0.1, patience=self.args_t.patience // 2)
+                return {
+                    'optimizer': optimizer,
+                    'lr_scheduler': scheduler,
+                    'monitor': self.args_t.monitor
+                }
+            else:
+                raise ValueError(f"不支持的调度器: {scheduler_name}")
+                
+            return [optimizer], [scheduler]
 
 if __name__ == '__main__':
     # 测试用例
