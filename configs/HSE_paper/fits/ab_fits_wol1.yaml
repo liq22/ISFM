@@ -3,12 +3,12 @@ model:
   n_patches: 128
 
 
-  embedding:  E_01_HSE # E_01_HTFE
-  patch_size_L: 256
+  embedding:  E_01_HSE_abalation # E_01_HTFE
+  patch_size_L: 4096
   patch_size_C: 1
   output_dim: 1024
 
-  backbone: B_01_basic_transformer
+  backbone: B_03_FITS
   # input_dim: 1024
   nhead: 2
   num_layers: 1
@@ -18,7 +18,7 @@ model:
 
 
 trainer:
-  n_epochs: 1
+  n_epochs: 100
 
   cla_loss: 'CE'
   imputation_loss: 'MSE'
@@ -36,7 +36,7 @@ trainer:
   lr: 0.0001
   weight_decay: 0.0001 
   snr: False
-  wandb: False
+  wandb: True
   notes: 'basic'
   metrics: ['acc', 'f1']
   # prune
@@ -52,7 +52,8 @@ trainer:
 dataset:
   batch_size: 64
   num_workers: 4
-  train_val_rate: 0.8  
+  train_val_rate: 0.8 
+  task_name: HSE_paper
   task:
     a_006_THU:
       data_dir: '/home/user/data/a_bearing/a_006_THU_pro/LQ_fusion/'
@@ -62,7 +63,6 @@ dataset:
       n_classes: 4
       f_s: 25600
       length: 4096
-
     a_001_CWRU:
       data_dir: '/home/user/data/a_bearing/a_001_CWRU_pro/'
       source: ['CWRU_12kHz_1730rpm_3hp_10','CWRU_12kHz_1797rpm_0hp_10',
@@ -73,8 +73,6 @@ dataset:
       n_classes: 10
       f_s: 12000
       length: 4096
-
-
     a_013_SUDA:
       data_dir: '/home/user/data/a_bearing/a_013_SUDA_pro/'
       source: ['SUDA_bearing_0kN_16','SUDA_bearing_3kN_16'] # if basic or generalization 1hz 10hz 15hz 

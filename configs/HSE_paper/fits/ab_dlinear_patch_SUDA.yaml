@@ -1,0 +1,73 @@
+model:
+  name: 'M_01_ISFM'
+  n_patches: 128
+
+
+  embedding: E_com_00_PE
+  embed_type: 'patch'  # 嵌入类型
+  patch_size_L: 241 # （4096 + 2） /16  256-16=240
+  patch_size_C: 1
+
+  stride: 16              # 步长
+  padding: 2              # 填充
+  output_dim: 4096
+  
+
+  backbone: B_04_Dlinear
+  # input_dim: 1024
+  nhead: 2
+  num_layers: 1
+
+  task_head: H_01_Linear_cla
+  dropout: 0
+
+
+trainer:
+  n_epochs: 100
+
+  cla_loss: 'CE'
+  imputation_loss: 'MSE'
+  forecast_loss: 'MSE'
+  anomaly_loss: 'MSE'
+
+  device: cuda
+  gpus: 1 
+  precision: 16
+  
+  seed: 42
+  monitor: 'val_loss'
+  patience: 64
+  # loss
+  lr: 0.001
+  weight_decay: 0.00001 
+  snr: False
+  wandb: True
+  notes: 'basic'
+  metrics: ['acc', 'f1']
+  # prune
+  pruning: False
+  regularization:
+    flag: False
+    method: 
+      l1: 0.00001
+  pretrained_weight: False
+  scheduler: 'reduceonplateau'
+  optimizer: 'adam'
+
+dataset:
+  batch_size: 128
+  num_workers: 32
+  train_val_rate: 0.8 
+  task_name: HSE_paper
+  task:
+    a_013_SUDA:
+      data_dir: '/home/user/data/a_bearing/a_013_SUDA_pro/'
+      source: ['SUDA_bearing_0kN_16','SUDA_bearing_3kN_16'] # if basic or generalization 1hz 10hz 15hz 
+      target: ['SUDA_bearing_1kN_16','SUDA_bearing_2kN_16'] # if
+      task_list: ['classification'] # imputation
+      n_classes: 16
+      f_s: 10000
+
+
+    
+

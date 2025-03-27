@@ -22,10 +22,16 @@ Embedding_dict = {
     'E_01_HSE': E_01_HSE,
     
     
-    'E_com_00_PE':E_com_00_PE
+    'E_com_00_PE':E_com_00_PE,
+    'E_01_HSE_abalation':E_01_HSE_abalation,
 }
 Backbone_dict = {
     'B_01_basic_transformer': B_01_basic_transformer,
+    
+    
+    'B_03_FITS': B_03_FITS,
+    'B_04_Dlinear': B_04_Dlinear,
+    'B_05_Manba': B_05_Manba,
 }
 TaskHead_dict = {
     'H_01_Linear_cla': H_01_Linear_cla,

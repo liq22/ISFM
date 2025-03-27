@@ -4,6 +4,13 @@ from pytorch_lightning.callbacks import ModelCheckpoint, ModelPruning, EarlyStop
 from ..data_process.data_provider import get_data,get_multiple_data
 from ..data_process.balanced_data_loader import Balanced_DataLoader_Dict_Iterator
 from torch.utils.tensorboard.writer import SummaryWriter
+import os
+# 获取当前进程的排名
+is_main_process = True  # 默认为主进程
+if 'LOCAL_RANK' in os.environ:
+    local_rank = int(os.environ['LOCAL_RANK'])
+    is_main_process = local_rank == 0
+    
 
 def trainer_set(args_t,args_d, path):
     """
@@ -27,7 +34,9 @@ def trainer_set(args_t,args_d, path):
     # 根据 wandb_flag 确定日志记录器列表
     if args_t.wandb:
         # 配置 WandB 日志记录
-        wandb_logger = WandbLogger(project=args_d.task)
+        wandb_logger = WandbLogger(project=args_d.task_name,
+                                   offline= not is_main_process,
+                                   )
         log_list.append(wandb_logger)
         
 
@@ -41,7 +50,8 @@ def trainer_set(args_t,args_d, path):
         max_epochs=args_t.n_epochs,
         devices=args_t.gpus,
         logger=log_list,
-        log_every_n_steps=1
+        # log_every_n_steps=20,
+        strategy= "ddp_find_unused_parameters_true" if args_t.gpus > 1 else 'auto',
     )
     # 获取数据加载器
     if isinstance(args_d.task, dict):

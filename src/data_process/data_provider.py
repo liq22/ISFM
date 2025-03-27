@@ -41,21 +41,27 @@ def get_data(args):
         dataset = dataset,
         batch_size= args.batch_size,
         shuffle = True,
-        num_workers = args.num_workers
+        num_workers = args.num_workers,
+        pin_memory=True,     
+        persistent_workers=True  
     )
     dataset = dataset_class(args,flag = 'val')
     val_loader = DataLoader(
         dataset = dataset,
         batch_size= args.batch_size,
         shuffle = False,
-        num_workers = args.num_workers
+        num_workers = args.num_workers,
+        pin_memory=True,     
+        persistent_workers=True 
     )
     dataset = dataset_class(args,flag = 'test')
     test_loader = DataLoader(
         dataset = dataset,
         batch_size= args.batch_size,
         shuffle = False,
-        num_workers = args.num_workers
+        num_workers = args.num_workers,
+        pin_memory=True,     
+        persistent_workers=True 
     )     
     return train_loader,val_loader,test_loader
 
@@ -90,19 +96,25 @@ def get_multiple_data(args):
             dataset = train_dataset,
             batch_size= args.batch_size,
             shuffle = True,
-            num_workers = args.num_workers
+            num_workers = args.num_workers,
+            pin_memory=True,     
+            persistent_workers=True 
         )
         val_loader = DataLoader(
             dataset = val_dataset,
             batch_size= args.batch_size,
             shuffle = False,
-            num_workers = args.num_workers
+            num_workers = args.num_workers,
+            pin_memory=True,     
+            persistent_workers=True 
         )
         test_loader = DataLoader(
             dataset = target_dataset,
             batch_size= args.batch_size,
             shuffle = False,
-            num_workers = args.num_workers
+            num_workers = args.num_workers,
+            pin_memory=True,     
+            persistent_workers=True 
         )
         train_loaders_dict[data_name] = train_loader
         val_loaders_dict[data_name] = val_loader

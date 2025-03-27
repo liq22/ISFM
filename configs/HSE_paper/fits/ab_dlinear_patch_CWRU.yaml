@@ -3,12 +3,16 @@ model:
   n_patches: 128
 
 
-  embedding:  E_01_HSE # E_01_HTFE
-  patch_size_L: 256
+  embedding: E_com_00_PE
+  embed_type: 'patch'  # 嵌入类型
+  patch_size_L: 241 # （4096 + 2） /16  256-16=240
   patch_size_C: 1
-  output_dim: 1024
 
-  backbone: B_01_basic_transformer
+  stride: 16              # 步长
+  padding: 2              # 填充
+  output_dim: 4096
+
+  backbone: B_04_Dlinear
   # input_dim: 1024
   nhead: 2
   num_layers: 1
@@ -18,7 +22,7 @@ model:
 
 
 trainer:
-  n_epochs: 1
+  n_epochs: 100
 
   cla_loss: 'CE'
   imputation_loss: 'MSE'
@@ -33,10 +37,10 @@ trainer:
   monitor: 'val_loss'
   patience: 64
   # loss
-  lr: 0.0001
-  weight_decay: 0.0001 
+  lr: 0.001
+  weight_decay: 0.00001 
   snr: False
-  wandb: False
+  wandb: True
   notes: 'basic'
   metrics: ['acc', 'f1']
   # prune
@@ -44,25 +48,17 @@ trainer:
   regularization:
     flag: False
     method: 
-      l1: 0.001
+      l1: 0.00001
   pretrained_weight: False
   scheduler: 'reduceonplateau'
   optimizer: 'adam'
 
 dataset:
-  batch_size: 64
-  num_workers: 4
-  train_val_rate: 0.8  
+  batch_size: 128
+  num_workers: 32
+  train_val_rate: 0.8 
+  task_name: HSE_paper
   task:
-    a_006_THU:
-      data_dir: '/home/user/data/a_bearing/a_006_THU_pro/LQ_fusion/'
-      source: ['1hz','15hz'] # if basic or generalization 1hz 10hz 15hz 
-      target: '10hz' # if basic or generalization 1hz 10hz 15hz
-      task_list: ['classification'] # imputation
-      n_classes: 4
-      f_s: 25600
-      length: 4096
-
     a_001_CWRU:
       data_dir: '/home/user/data/a_bearing/a_001_CWRU_pro/'
       source: ['CWRU_12kHz_1730rpm_3hp_10','CWRU_12kHz_1797rpm_0hp_10',
@@ -73,15 +69,6 @@ dataset:
       n_classes: 10
       f_s: 12000
       length: 4096
-
-
-    a_013_SUDA:
-      data_dir: '/home/user/data/a_bearing/a_013_SUDA_pro/'
-      source: ['SUDA_bearing_0kN_16','SUDA_bearing_3kN_16'] # if basic or generalization 1hz 10hz 15hz 
-      target: ['SUDA_bearing_1kN_16','SUDA_bearing_2kN_16'] # if
-      task_list: ['classification'] # imputation
-      n_classes: 16
-      f_s: 10000
 
 
     

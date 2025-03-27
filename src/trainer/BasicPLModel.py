@@ -78,22 +78,18 @@ class BasicPLModel(pl.LightningModule):
             "precision": torchmetrics.Precision,
             "recall": torchmetrics.Recall
         }
-        metrics = {}
+        metrics = nn.ModuleDict()
         for data_name,dataset_dict in self.args_d.task.items():
             n_class = dataset_dict['n_classes']
         
-            for metric_name in self.args_t.metrics:
-                if metric_name not in metric_classes:
-                    print(f'unrecognized metric {metric_name}')
-                    continue
                     
-                metrics.update({
-                    f"{stage}_{data_name}_{metric_name}": metric_classes[metric_name](
-                        task="multiclass" if n_class > 2 else "binary",
-                        num_classes=n_class
-                    )
-                    for stage in ["train", "val", "test"]
-                })
+            metrics[data_name]= nn.ModuleDict({
+                f"{stage}_{metric_name}": metric_classes[metric_name](
+                    task="multiclass" if n_class > 2 else "binary",
+                    num_classes=n_class
+                )
+                for stage in ["train", "val", "test"] for metric_name in self.args_t.metrics
+            })
                 
         return nn.ModuleDict(metrics)
     
@@ -121,10 +117,11 @@ class BasicPLModel(pl.LightningModule):
         if data_name in self.metrics:
             for name, metric in self.metrics[data_name].items():
                 if name.startswith(stage):
-                    data_task_metrics[f"{stage}_{data_name}_{name.split('_')[1]}"] = metric(y_hat, y)        
+                    data_task_metrics[ name + '_' + data_name ] = metric(y_hat, y)        
                     
         data_task_metrics[f"{stage}_loss"] = task_loss
-        
+        # data_task_metrics[f"{stage}_name"] = data_name 
+        data_task_metrics[f"{stage}_batch"] = x.shape[0]    
         # 计算指标
         # metrics = {
         #     f"{stage}_loss": task_loss,
@@ -164,7 +161,8 @@ class BasicPLModel(pl.LightningModule):
             on_epoch=True,
             prog_bar=True,
             logger=True,
-            sync_dist=True
+            sync_dist=True,
+            batch_size=metrics[f"{stage}_batch"]
         )
 
     def _add_awgn(self, x: torch.Tensor, snr: int) -> torch.Tensor:
@@ -217,8 +215,8 @@ class BasicPLModel(pl.LightningModule):
                 reg_loss += weight * sum(torch.norm(p, 2) for p in params)
             else:
                 raise ValueError(f"不支持的正则化类型: {reg_type}")
-            reg_dict = reg_dict.update({reg_type: reg_loss})
-        reg_dict = reg_dict.update({"total": reg_loss})
+            reg_dict.update({reg_type: reg_loss})
+        reg_dict.update({"total": reg_loss})
         return reg_dict
 
     def configure_optimizers(self):

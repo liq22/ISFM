@@ -27,11 +27,11 @@ if __name__ == '__main__':
     # 添加参数
     parser.add_argument('--config_dir',
                         type=str,
-                        default='configs/basic_FM.yaml',
+                        default= 'configs/HSE_paper/fits/ab_dlinear_patch_SUDA.yaml',#'configs/HSE_paper/abalation/emb_spatio_temporal.yaml',# 'configs/HSE_paper/fits/ab_fits.yaml', # 'configs/basic_FM.yaml', #
                         help='The directory of the configuration file')
-    parser.add_argument('--iteration', type=int, default=1,
+    parser.add_argument('--iteration', type=int, default=2,
                         help='The number of iterations to run the experiment')
-    parser.add_argument('--notes', type=str, default='')
+    parser.add_argument('--notes', type=str, default='test')
     
     meta_args = parser.parse_args()
     # -----------------------
@@ -56,7 +56,7 @@ if __name__ == '__main__':
         seed_everything(args_t.seed + it) # 17 args.seed 
         # 如果需要使用 WandB，就进行初始化；否则跳过
         if args_t.wandb:
-            wandb.init(project=args_d.task, name=name, notes=note)
+            wandb.init(project=args_d.task_name, name=name, notes=note)
         else:
             wandb.init(mode='disabled')  # 避免 wandb 报错，可使用 "disabled" 模式
         # -----------------------

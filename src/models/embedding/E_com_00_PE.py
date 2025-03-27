@@ -11,9 +11,9 @@ class E_com_00_PE(nn.Module):
         self.d_model = args.output_dim
         
         # 从args获取参数
-        self.patch_len = args.patch_size_L if hasattr(args, 'patch_len') else None
-        self.stride = args.stride if hasattr(args, 'stride') else None
-        self.padding = args.padding if hasattr(args, 'padding') else None
+        self.patch_len = args.patch_size_L if hasattr(args, 'patch_len') else 256
+        self.stride = args.stride if hasattr(args, 'stride') else 128
+        self.padding = args.padding if hasattr(args, 'padding') else 0
         self.dropout_rate = args.dropout
         self.freq = args.freq if hasattr(args, 'freq') else 'h'
         self.embed_type_sub = args.sub_embed_type if hasattr(args, 'sub_embed_type') else 'fixed'
@@ -46,9 +46,9 @@ class E_com_00_PE(nn.Module):
         
         elif self.embed_type == 'spatio_temporal':
             self.module = SpatioTemporalEmbedding(
-                in_steps=args.patch_size_L,
-                steps_per_day=args.steps_per_day,
-                input_dim=args.input_dim,
+                in_steps= 4096,# args.patch_size_L,
+                # steps_per_day=args.steps_per_day,
+                # input_dim=args.input_dim,
                 input_embedding_dim=args.input_embedding_dim,
                 # tod_embedding_dim=args.tod_embedding_dim,
                 # dow_embedding_dim=args.dow_embedding_dim,
@@ -65,6 +65,7 @@ class E_com_00_PE(nn.Module):
 
     def forward(self, x, x_mark=None):
         B, L, C = x.shape
+        x = x[:,:,0:1]
         
         # 分支处理
         if self.embed_type == 'patch':
@@ -204,7 +205,7 @@ class DataEmbedding_wo_pos(nn.Module):
 class PatchEmbedding(nn.Module):
     def __init__(self, d_model, patch_len, stride, padding, dropout):
         super(PatchEmbedding, self).__init__()
-        self.patch_len = patch_len
+        self.patch_len = patch_len # 256
         self.stride = stride
         self.padding_patch_layer = nn.ReplicationPad1d((0, padding))
         self.value_embedding = nn.Linear(patch_len, d_model, bias=False)
